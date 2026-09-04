@@ -2,6 +2,74 @@
 
 All notable changes to Airwave are documented here.
 
+## [0.13.3] - 2026-09-04
+
+Promo — the Airwave sizzle reel, rebuilt in Remotion.
+
+### Added
+- **`tools/promo` — the Airwave promo reel (Remotion).** A 1920x1080, 60fps, ~61.6s hero reel built with
+  Remotion + Tailwind v4 + Framer Motion on the getairwave.tv brand: a Logo-splash intro; two-column feature
+  scenes with a persistent glass media frame that morphs to each clip's aspect (blur-masked swaps, crisp inner
+  edge); an outro with the wordmark lockup + static platform tiles (Apple TV, iPad, Android TV, Fire TV, webOS,
+  Roku, Windows, macOS, Docker, Linux, browser); and a GuideEngine-style animated blob backdrop. GPU rendering
+  (`--gl=angle`). Standalone project, outside the pnpm workspaces (never version-bumped or built with the apps).
+
+### Removed
+- The earlier HyperFrames version of the promo (`index.html`, `hyperframes.json`, etc.), superseded by the
+  Remotion build.
+
+## [0.13.2] - 2026-09-04
+
+Admin web — a device-code CTA on the non-admin notice so viewers (and app reviewers) aren't stranded.
+
+### Fixed
+- The **`/not-authorized`** page (where a signed-in non-admin lands) now shows a prominent **"Approve a
+  device code"** button linking to `/device`. A viewer's main reason to reach the admin web is to approve a
+  TV device-code sign-in, but the bare "Admin access only" notice was a dead-end — it stranded viewers, and
+  repeatedly stranded App Store review (reviewers signed in, saw "admin only", and stopped without reaching
+  `/device`). The button makes the next step obvious.
+
+## [0.13.1] - 2026-09-03
+
+Docs (getairwave.tv) — a dedicated Local Development page with a screencast of the setup wizard.
+
+### Added
+- **New "Local Development" docs page** (getairwave.tv): clone → `pnpm dev:setup` → `pnpm dev:core`,
+  with an embedded screencast of the wizard, a breakdown of what it writes, the re-run / secret-safety
+  behavior, the `--dry-run` preview, the by-hand alternative, and the dev-script variants. Added to the
+  docs nav under a new "Development" section. Screencast at `public/screenshots/dev-setup.mp4` (trimmed
+  + re-encoded with ffmpeg).
+
+## [0.13.0] - 2026-09-03
+
+Contributor onboarding — one interactive `pnpm dev:setup` wizard that takes a fresh clone to a
+running dev stack.
+
+### Added
+- **`pnpm dev:setup` — interactive dev setup wizard** (`scripts/dev-setup.ts`, built on
+  `@clack/prompts`). Checks prerequisites (Node 22+, Bun, pnpm), prompts for your Postgres (with a
+  TCP reachability probe and a `?schema=public` default), seeds the first admin, and writes all four
+  dev env files — `apps/server/.env`, `apps/web/.env`, `apps/tv-web/.env.local`,
+  `apps/tv-native/.env.local` — from the `.env.example` templates, then applies migrations and points
+  you at `pnpm dev:core`.
+  - **Generates and preserves secrets.** Generates `BETTER_AUTH_SECRET` and a stable
+    `PLEX_CLIENT_IDENTIFIER` on a fresh run, and *keeps* them (and your other values) on a re-run —
+    regenerating the auth secret would make every stored encrypted secret undecryptable. Existing
+    `.env` files are backed up to `.env.bak` before overwrite, and any extra vars you've tuned are
+    preserved.
+  - **Optional AI workflow engine** — one prompt enables it and wires `WORKFLOW_POSTGRES_URL` at the
+    same database (its own schema), with `AI_LINEUP_BUILD_LIMIT=0` (full lineup).
+  - **Optional tv-tauri desktop client** — detects the Rust toolchain and, on macOS/Linux,
+    auto-installs it via rustup behind an animated progress bar; on Windows it detects and guides
+    (rustup + MSVC/WebView2). Flags the non-Rust system deps rustup can't provide.
+  - **`--dry-run`** walks the entire flow — prompts, the Postgres probe, and a simulated Rust-install
+    progress bar — without writing a single file or touching the database.
+- README: a "first run" path leading with `pnpm dev:setup`, plus `pnpm dev:setup` / `pnpm dev:core`
+  entries in the scripts table.
+
+### Changed
+- `apps/server/.env.example`: the `AI_LINEUP_BUILD_LIMIT` example now shows `0` (full lineup) instead of `3`.
+
 ## [0.12.49] - 2026-09-03
 
 AI lineup builder — slow/local models no longer time out (GitHub #22), Z.ai (GLM) as a first-class cloud

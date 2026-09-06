@@ -77,18 +77,20 @@ function jsonWrite(text: string, next: string): string {
 }
 
 /** Roku manifest: major_version / minor_version / build_version → "maj.min.build". */
+// NB: no `$` anchors — files may be checked out CRLF, and a trailing \r would break `$`. Reads ignore the
+// trailing \r; writes capture the key prefix and replace only the digits, leaving the line ending intact.
 function rokuRead(text: string): string | null {
-  const maj = text.match(/^major_version=(\d+)$/m)?.[1];
-  const min = text.match(/^minor_version=(\d+)$/m)?.[1];
-  const bld = text.match(/^build_version=(\d+)$/m)?.[1];
+  const maj = text.match(/^major_version=(\d+)/m)?.[1];
+  const min = text.match(/^minor_version=(\d+)/m)?.[1];
+  const bld = text.match(/^build_version=(\d+)/m)?.[1];
   return maj && min && bld ? `${maj}.${min}.${bld}` : null;
 }
 function rokuWrite(text: string, next: string): string {
   const [maj, min, bld] = next.split(".");
   return text
-    .replace(/^major_version=\d+$/m, `major_version=${maj}`)
-    .replace(/^minor_version=\d+$/m, `minor_version=${min}`)
-    .replace(/^build_version=\d+$/m, `build_version=${bld}`);
+    .replace(/^(major_version=)\d+/m, `$1${maj}`)
+    .replace(/^(minor_version=)\d+/m, `$1${min}`)
+    .replace(/^(build_version=)\d+/m, `$1${bld}`);
 }
 
 /**
@@ -101,7 +103,7 @@ function cargoRead(text: string): string | null {
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].trim() === 'name = "airwave"') {
       for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
-        const m = lines[j].match(/^version = "(\d+\.\d+\.\d+)"$/);
+        const m = lines[j].replace(/\r$/, "").match(/^version = "(\d+\.\d+\.\d+)"$/);
         if (m) return m[1];
       }
     }
@@ -113,8 +115,9 @@ function cargoWrite(text: string, next: string): string {
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].trim() === 'name = "airwave"') {
       for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
-        if (/^version = "\d+\.\d+\.\d+"$/.test(lines[j])) {
-          lines[j] = `version = "${next}"`;
+        if (/^version = "\d+\.\d+\.\d+"$/.test(lines[j].replace(/\r$/, ""))) {
+          const cr = lines[j].endsWith("\r") ? "\r" : ""; // preserve the line's ending (CRLF vs LF)
+          lines[j] = `version = "${next}"${cr}`;
           return lines.join("\n");
         }
       }

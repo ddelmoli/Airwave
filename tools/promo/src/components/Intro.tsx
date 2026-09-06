@@ -1,5 +1,6 @@
 import { AbsoluteFill, Easing, Img, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT_DISPLAY } from "../theme";
+import { C, FONT_DISPLAY, INTRO_VO_DELAY_SEC } from "../theme";
+import { BlobBg } from "./BlobBg";
 
 const EASE = Easing.out(Easing.cubic);
 const EASE_BACK = Easing.out(Easing.back(1.5));
@@ -19,9 +20,11 @@ export const Intro: React.FC = () => {
     extrapolateRight: "clamp",
   });
 
-  const glow = interpolate(frame, [s(0.3), s(1.4)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const markOp = interpolate(frame, [s(0.35), s(0.85)], [0, 1], { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const markScale = interpolate(frame, [s(0.35), s(0.95)], [0.82, 1], { easing: EASE_BACK, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // The lockup holds off until the voiceover starts ("Introducing Airwave"), then animates in — so it arrives
+  // WITH the line, not before it. Everything below is offset by D; the internal cadence is unchanged.
+  const D = INTRO_VO_DELAY_SEC;
+  const markOp = interpolate(frame, [s(D), s(D + 0.5)], [0, 1], { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const markScale = interpolate(frame, [s(D), s(D + 0.6)], [0.82, 1], { easing: EASE_BACK, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
     <AbsoluteFill
@@ -32,17 +35,15 @@ export const Intro: React.FC = () => {
         justifyContent: "center",
       }}
     >
-      {/* accent glow */}
-      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", opacity: glow }}>
-        <div style={{ width: 1040, height: 560, marginTop: -80, borderRadius: "50%", filter: "blur(28px)", background: "radial-gradient(closest-side, rgba(74,159,224,0.42), rgba(74,159,224,0))" }} />
-      </AbsoluteFill>
+      {/* Blob backdrop — buttery slide-down + fade-in (GuideEngine blog-hero), same as the feature/outro scenes. */}
+      <BlobBg />
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 34, textAlign: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
           <Img src={staticFile("brand/logo.png")} style={{ width: 200, height: "auto", opacity: markOp, transform: `scale(${markScale})` }} />
           <div style={{ display: "flex", fontFamily: '"Inter", ' + FONT_DISPLAY, fontWeight: 700, fontSize: 132, letterSpacing: "-0.01em", lineHeight: 1, color: "#fff" }}>
             {WORD.split("").map((ch, i) => {
-              const d = s(0.7 + i * 0.055);
+              const d = s(D + 0.35 + i * 0.055);
               const op = interpolate(frame, [d, d + s(0.4)], [0, 1], { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
               const y = interpolate(frame, [d, d + s(0.4)], [46, 0], { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
               return (
@@ -61,7 +62,7 @@ export const Intro: React.FC = () => {
               own <span style={{ color: C.accent }}>always-on live TV</span>.
             </>,
           ].map((line, li) => {
-            const d = s(1.55 + li * 0.14);
+            const d = s(D + 1.2 + li * 0.14);
             const op = interpolate(frame, [d, d + s(0.7)], [0, 1], { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
             const y = interpolate(frame, [d, d + s(0.7)], [22, 0], { easing: EASE, extrapolateLeft: "clamp", extrapolateRight: "clamp" });
             return (

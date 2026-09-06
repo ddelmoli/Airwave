@@ -58,36 +58,38 @@ export const TOTAL_SEC = INTRO_SEC + FEATURES_SEC + OUTRO_SEC; // 61.6
 // nominal spoken window used ONLY to shape the music duck (the clip itself plays its real natural length).
 // Drop clips in `assets/vo/<file>` and flip `have: true` as each is generated — only `have` clips are mounted
 // (so Studio never 404s on a not-yet-made file) and only `have` clips duck the music.
-export type VoClip = { id: string; file: string; atSec: number; winSec: number; have: boolean };
-const feat = (id: string) => FEATURES.find((f) => f.id === id)!;
-const voFeat = (id: string, file: string, have = false): VoClip => {
-  const f = feat(id);
-  return { id, file, atSec: INTRO_SEC + f.start, winSec: f.dur, have };
-};
+// Intro line holds for a beat so the music bed establishes before the voice comes in.
+export const INTRO_VO_DELAY_SEC = 1.4;
+// VO manifest: id (matches "intro" / a FEATURES id / "outro"), file, and whether the clip EXISTS on disk yet.
+// Scene timings are DERIVED from the measured clip lengths at build time (see timeline.ts / Root.tsx), so a
+// line is never cut off. Flip `have: true` when you drop a clip in assets/audio/vo/ — only `have` clips are
+// measured, mounted, and duck the music.
+export type VoClip = { id: string; file: string; have: boolean };
 export const VO: VoClip[] = [
-  { id: "intro", file: "audio/vo/01-intro.mp3", atSec: 0, winSec: INTRO_SEC, have: true },
-  voFeat("guide", "audio/vo/02-guide.mp3"),
-  voFeat("tune", "audio/vo/03-live.mp3"),
-  voFeat("dvr", "audio/vo/04-dvr.mp3"),
-  voFeat("surf", "audio/vo/05-surf.mp3"),
-  voFeat("bump", "audio/vo/06-bumpers.mp3"),
-  voFeat("build", "audio/vo/07-build.mp3"),
-  voFeat("org", "audio/vo/08-organize.mp3"),
-  voFeat("every", "audio/vo/09-everywhere.mp3"),
-  voFeat("ai", "audio/vo/10-ai.mp3"),
-  voFeat("setup", "audio/vo/11-selfhost.mp3"),
-  { id: "outro", file: "audio/vo/12-outro.mp3", atSec: INTRO_SEC + FEATURES_SEC, winSec: OUTRO_SEC, have: false },
+  { id: "intro", file: "audio/vo/01-intro.mp3", have: true },
+  { id: "guide", file: "audio/vo/02-guide.mp3", have: true },
+  { id: "tune", file: "audio/vo/03-live.mp3", have: true },
+  { id: "dvr", file: "audio/vo/04-dvr.mp3", have: true },
+  { id: "surf", file: "audio/vo/05-surf.mp3", have: true },
+  { id: "bump", file: "audio/vo/06-bumpers.mp3", have: true },
+  { id: "build", file: "audio/vo/07-build.mp3", have: true },
+  { id: "org", file: "audio/vo/08-organize.mp3", have: true },
+  { id: "every", file: "audio/vo/09-everywhere.mp3", have: true },
+  { id: "ai", file: "audio/vo/10-ai.mp3", have: true },
+  { id: "setup", file: "audio/vo/11-selfhost.mp3", have: true },
+  { id: "outro", file: "audio/vo/12-outro.mp3", have: true },
 ];
 export const VO_VOL = 1.0;
 export const VO_FADE_SEC = 0.08; // tiny click-safe fade-in on each VO clip
 
 // Music bed loops under the whole reel via frame-driven volume automation (fade in/out + duck under VO).
 // Drop a file in assets/vo/ and set the path to enable it.
-export const MUSIC_BED: string | null = null; // e.g. "audio/music/bed.mp3" (drop the file in assets/audio/music/)
+export const MUSIC_BED: string | null = "audio/music/bed.mp3"; // set null to disable; file lives in assets/audio/music/
 export const MUSIC_VOL = 0.16; // bed level in the gaps between narration
-export const MUSIC_DUCK = 0.06; // bed level while a VO line is speaking
+export const MUSIC_DUCK_ENABLED = false; // OFF for now — the bed already sits low enough under the VO
+export const MUSIC_DUCK = 0.06; // bed level while a VO line is speaking (only applied when ducking is enabled)
 export const MUSIC_FADE_IN_SEC = 1.2;
-export const MUSIC_FADE_OUT_SEC = 1.6;
+export const MUSIC_FADE_OUT_SEC = 3.0; // gentle tail so the bed doesn't cut out abruptly at the end
 export const MUSIC_DUCK_RAMP_SEC = 0.35; // how fast the bed dips into / recovers from a duck
 
 // Glass frame geometry: both width AND height morph to the active media's aspect. Landscape is

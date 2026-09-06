@@ -2,6 +2,31 @@
 
 All notable changes to Airwave are documented here.
 
+## [0.13.7] - 2026-09-06
+
+Promo reel (`tools/promo`) — voiceover, a music bed, and animated blob backgrounds. (Marketing tooling,
+outside the pnpm workspaces; nothing shipped in an app.)
+
+### Added
+- **Voiceover-driven timeline.** Each scene now stretches to fit its narration line plus a healthy gap —
+  clip lengths are measured from the real audio (`@remotion/media-utils` in `calculateMetadata`) and the whole
+  timeline is derived from them (`src/timeline.ts`), so a line is never cut off. Scenes without VO fall back to
+  their authored length.
+- **Audio layer** (`src/components/Soundtrack.tsx`): per-scene voiceover mounted at its computed start with a
+  click-safe fade-in, plus a looped music bed with a gently eased 3s fade-out at the end. Ducking is built but
+  gated off for now (`MUSIC_DUCK_ENABLED`). Audio lives in a tracked-but-gitignored `assets/audio/` folder
+  (`vo/` + `music/`) so the large, regenerated files stay local.
+- **Animated blob backgrounds** (`src/components/BlobBg.tsx`): the GuideEngine blog-hero entrance (buttery
+  slide-down + scale-up + fade-in) on every section. Intro/outro get a subtle living idle; the feature block
+  orbits the blob one step per transition (slide + rotate + intensity) then holds.
+
+### Changed
+- Intro: the logo lockup now animates in exactly when the voiceover starts (not before), and its background
+  uses the blob instead of the old center glow.
+- Intro/Everywhere VO copy reworked (dropped the clunky "always-on"; the Everywhere line now covers local +
+  remote playback).
+- The outro holds ~2.4s past the closing line so the reel doesn't end abruptly.
+
 ## [0.13.6] - 2026-09-05
 
 tv-native — a client-side freeze detector so a mid-program player freeze is finally visible (GitHub #31).

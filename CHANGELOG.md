@@ -2,6 +2,90 @@
 
 All notable changes to Airwave are documented here.
 
+## [0.13.7] - 2026-09-06
+
+Promo reel (`tools/promo`) — voiceover, a music bed, and animated blob backgrounds. (Marketing tooling,
+outside the pnpm workspaces; nothing shipped in an app.)
+
+### Added
+- **Voiceover-driven timeline.** Each scene now stretches to fit its narration line plus a healthy gap —
+  clip lengths are measured from the real audio (`@remotion/media-utils` in `calculateMetadata`) and the whole
+  timeline is derived from them (`src/timeline.ts`), so a line is never cut off. Scenes without VO fall back to
+  their authored length.
+- **Audio layer** (`src/components/Soundtrack.tsx`): per-scene voiceover mounted at its computed start with a
+  click-safe fade-in, plus a looped music bed with a gently eased 3s fade-out at the end. Ducking is built but
+  gated off for now (`MUSIC_DUCK_ENABLED`). Audio lives in a tracked-but-gitignored `assets/audio/` folder
+  (`vo/` + `music/`) so the large, regenerated files stay local.
+- **Animated blob backgrounds** (`src/components/BlobBg.tsx`): the GuideEngine blog-hero entrance (buttery
+  slide-down + scale-up + fade-in) on every section. Intro/outro get a subtle living idle; the feature block
+  orbits the blob one step per transition (slide + rotate + intensity) then holds.
+
+### Changed
+- Intro: the logo lockup now animates in exactly when the voiceover starts (not before), and its background
+  uses the blob instead of the old center glow.
+- Intro/Everywhere VO copy reworked (dropped the clunky "always-on"; the Everywhere line now covers local +
+  remote playback).
+- The outro holds ~2.4s past the closing line so the reel doesn't end abruptly.
+
+## [0.13.6] - 2026-09-05
+
+tv-native — a client-side freeze detector so a mid-program player freeze is finally visible (GitHub #31).
+
+### Added
+- **Freeze detector in the channel player** (`apps/tv-native/src/features/watch/use-tv-player.ts`). Playback
+  telemetry was a one-shot watchdog ~6s after each load, so a freeze *after* playback started recorded
+  nothing. The player's tick now watches liveness: once a program is playing (baseline anchored, not paused,
+  not buffering), if no mpv progress event arrives for 12s the native player has frozen (e.g. the tvOS mpv
+  deadlock, #30) and one `PlaybackLog` row is posted with outcome `stalled` and the freeze detail. The JS
+  thread and networking keep running during a native main-thread wedge (the heartbeat kept flowing in the #30
+  crash), so this is the only layer that can see such a freeze. Re-arms once progress resumes.
+
+## [0.13.5] - 2026-09-05
+
+Repo tooling — a one-command, footgun-proof version bumper.
+
+### Added
+- **`pnpm version:bump <patch|minor|major|X.Y.Z> [--dry-run]`** (`scripts/bump-version.ts`) sets every
+  Airwave version file in lockstep — all `apps/*/package.json` (discovered, not hardcoded), the webOS
+  `appinfo.json`, the Expo `app.json`, the Tauri `tauri.conf.json` / `Cargo.toml` / `Cargo.lock`, and the
+  Roku `manifest`. Every edit is **targeted** (a JSON `version` key, the manifest's three version lines, or
+  the single `airwave` package line in the Cargo files found via its `name = "airwave"` anchor), so a
+  dependency crate can never be bumped by accident. Refuses to run if the files are out of sync (surfaces the
+  mismatch instead of normalizing), and `--dry-run` previews without writing. Edits version files only — the
+  CHANGELOG entry + commit + push stay with the `/version-bump` flow.
+
+## [0.13.4] - 2026-09-05
+
+tv-native (iOS / Apple TV) — fix a main-thread ⇄ mpv deadlock freeze (GitHub #30) and enable the player's
+own logging (GitHub #31), by completing the port to plezy's async libmpv client API.
+
+### Fixed
+- **Apple TV / iPad no longer freeze on a main-thread ⇄ mpv deadlock (GitHub #30).** The Apple mpv core
+  (`packages/mpv-player/ios/MpvCore.swift`) called libmpv **synchronously on the calling thread**, and the
+  Expo view prop setters run on the **main thread**. On tvOS the `avfoundation` video output must
+  `dispatch_sync` to the main queue to touch its display layer; when that coincided with a main-thread mpv
+  call, the two deadlocked — a multi-minute freeze that tvOS killed with `0x8BADF00D`. Both Apple cores now
+  use libmpv's **async client API** (`mpv_command_async` / `mpv_set_property_async` with a request-id → reply
+  table); those submit and return immediately, never blocking the caller, so the deadlock is structurally
+  impossible. This completes the port from plezy's `MpvPlayerCoreBase` — we had ported the structure but kept
+  synchronous calls since v0.7.19. `MpvAudioCore` gets the same treatment for parity.
+
+### Added
+- **libmpv logging (GitHub #31).** Both Apple cores now request mpv log messages (verbose in debug,
+  warnings+ on a store build) and emit them via `os_log`, so a shipped app's player log is visible in
+  Console.app off a retail device — previously release builds had effectively no player logging. Remaining
+  `print()` calls replaced with `os_log`.
+
+### Changed
+- `avfoundation-composite-osd=no` on the Apple mpv output. Subtitles are selected/burned server-side (Plex),
+  so mpv's per-frame OSD compositing is not our render path; disabling it reduces video-output ↔ main-thread
+  coupling (matches plezy + streamyfin).
+
+### Verification
+- Native change — requires a fresh iOS/tvOS build; verify on device (Apple TV + iPad) before release.
+  On-device matrix + the #30 repro (HEVC copy + E-AC3→mp3 HLS, long session with transitions) in
+  `.plans/mpv-async-refactor.md`.
+
 ## [0.13.3] - 2026-09-04
 
 Promo — the Airwave sizzle reel, rebuilt in Remotion.

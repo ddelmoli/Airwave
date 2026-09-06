@@ -1,11 +1,13 @@
 import { AbsoluteFill, Easing, Img, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FEATURES, FRAME_H_PORT, FRAME_MAT, FRAME_W_LAND, frameHeightFor, frameWidthFor } from "../theme";
+import { C, FRAME_H_PORT, FRAME_MAT, FRAME_W_LAND, frameHeightFor, frameWidthFor } from "../theme";
+import type { FeatureTiming } from "../timeline";
 import { BlobBg } from "./BlobBg";
 import { SectionText } from "./SectionText";
 
 // Persistent glass frame on the right (its WIDTH morphs to each media's aspect, height constant);
 // the content inside blurs at each boundary and swaps to the next clip. Text section on the left.
-export const Features: React.FC = () => {
+// Scene timings (`startSec`/`durSec`, LOCAL to the features block) are VO-driven — see timeline.ts.
+export const Features: React.FC<{ features: FeatureTiming[] }> = ({ features }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const tSec = frame / fps;
@@ -16,21 +18,21 @@ export const Features: React.FC = () => {
   const wt: number[] = [];
   const wv: number[] = [];
   const hv: number[] = [];
-  FEATURES.forEach((f, i) => {
+  features.forEach((f, i) => {
     const w = frameWidthFor(f);
     const h = frameHeightFor(f);
     if (i === 0) { wt.push(0); wv.push(w); hv.push(h); }
-    wt.push((f.start + ramp) * fps); wv.push(w); hv.push(h);
-    wt.push((f.start + f.dur - ramp) * fps); wv.push(w); hv.push(h);
+    wt.push((f.startSec + ramp) * fps); wv.push(w); hv.push(h);
+    wt.push((f.startSec + f.durSec - ramp) * fps); wv.push(w); hv.push(h);
   });
-  const last = FEATURES[FEATURES.length - 1];
-  wt.push((last.start + last.dur) * fps); wv.push(frameWidthFor(last)); hv.push(frameHeightFor(last));
+  const last = features[features.length - 1];
+  wt.push((last.startSec + last.durSec) * fps); wv.push(frameWidthFor(last)); hv.push(frameHeightFor(last));
   const morphEase = { easing: Easing.inOut(Easing.cubic), extrapolateLeft: "clamp" as const, extrapolateRight: "clamp" as const };
   const width = interpolate(frame, wt, wv, morphEase);
   const height = interpolate(frame, wt, hv, morphEase);
 
   // Blur peaks at each internal boundary to mask the media swap.
-  const boundaries = FEATURES.slice(1).map((f) => f.start);
+  const boundaries = features.slice(1).map((f) => f.startSec);
   const blurWin = 0.32;
   const BMAX = 20;
   let blur = 0;
@@ -48,11 +50,12 @@ export const Features: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 72, background: C.bg }}>
-      <BlobBg />
+      {/* Blob shifts one step around its orbit at each feature boundary, then holds. */}
+      <BlobBg steps={boundaries} />
       {/* Left: per-feature section text (fixed 540 wide; only the active one renders). */}
       <div style={{ position: "relative", width: 540, height: "100%" }}>
-        {FEATURES.map((f) => (
-          <Sequence key={f.id} from={Math.round(f.start * fps)} durationInFrames={Math.round(f.dur * fps)} layout="none">
+        {features.map((f) => (
+          <Sequence key={f.id} from={Math.round(f.startSec * fps)} durationInFrames={Math.round(f.durSec * fps)} layout="none">
             <SectionText feature={f} />
           </Sequence>
         ))}
@@ -79,9 +82,11 @@ export const Features: React.FC = () => {
               the CONTENTS blur — the frame's inner edge is retained. */}
           <div style={{ position: "relative", flex: 1, margin: FRAME_MAT, borderRadius: 14, overflow: "hidden", background: C.surface }}>
             <div style={{ position: "absolute", inset: 0, filter: `blur(${blur}px)` }}>
-              {FEATURES.map((f) => (
-                <Sequence key={f.id} from={Math.round(f.start * fps)} durationInFrames={Math.round(f.dur * fps)}>
+              {features.map((f) => (
+                <Sequence key={f.id} from={Math.round(f.startSec * fps)} durationInFrames={Math.round(f.durSec * fps)}>
                   {f.kind === "video" ? (
+                    // A demo clip shorter than its (VO-stretched) scene just holds its last frame for the
+                    // remainder — fine in the interim; the demos will be re-recorded with extra length.
                     <OffthreadVideo src={staticFile(f.src)} muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
                     <Img src={staticFile(f.src)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
